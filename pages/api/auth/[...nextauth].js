@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials";
-
+// ** Cookies
+import Cookies from 'js-cookie'
 
 export const authOptions = {
   // Configure one or more authentication providers
@@ -39,7 +40,7 @@ export const authOptions = {
 
         if (token.access_token) {
           const userToken = token.access_token; // Assuming your token object has an 'access_token' property
-
+          Cookies.set('accessToken', userToken)
           const userResponse = await fetch("http://localhost:8000/api/user", {
             method: "GET",
             headers: {
@@ -49,7 +50,11 @@ export const authOptions = {
 
           if (userResponse.ok) {
             const user = await userResponse.json();
-            console.log(user)
+            console.log("User Data:",user)
+            // return {
+            //   ...user,
+            //   accessToken: userToken,
+            // };
             return user;
             // Process the user data as needed
           } else {
@@ -66,6 +71,38 @@ export const authOptions = {
         }
       }
     })
-  ]
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      // Persist the OAuth access_token to the token right after signin
+      if (user) {
+        // console.log("Access Token2:", accessToken);
+        const filteredUser = {
+          email: user.email,
+          accessToken: user.accessToken,
+          user_id: user.user_id,
+        };
+  
+        token = { ...token, ...filteredUser };
+        console.log("the filtered value is " + token);
+      }
+      return token;
+    },
+  
+    async session({ session, token, user }) {
+      // Send properties to the client, like an access_token from a provider.
+      let customUser = { ...token };
+      session = { user: customUser };
+      console.log("Your session", session);
+      return session;
+    },
+  },
+  pages: {
+    signIn: "/login"
+  }
+ 
+
+ 
+ 
 }
 export default NextAuth(authOptions)
